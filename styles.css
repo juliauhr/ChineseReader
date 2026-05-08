@@ -62,7 +62,7 @@ input[type="file"] {
 }
 
 .btn {
-    padding: 12px 24px;
+    padding: 5px 8px;
     background: #000000;
     color: #ffffff;
     border: 2px solid #000000;
@@ -91,7 +91,7 @@ input[type="file"] {
 }
 
 .btn-small {
-    padding: 8px 16px;
+    padding: 8px 8px;
     font-size: 14px;
 }
 
@@ -115,7 +115,7 @@ input[type="file"] {
 }
 
 .page-btn {
-    padding: 12px 24px;
+    padding: 8px 15px;
     background: #000000;
     color: #ffffff;
     border: 2px solid #000000;
