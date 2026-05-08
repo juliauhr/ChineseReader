@@ -1,10 +1,10 @@
-const CACHE_NAME = 'chinese-reader-v2';
+const CACHE_NAME = 'chinese-reader-v3';
 const urlsToCache = [
-  '/WordSwap/',
-  '/WordSwap/index.html',
-  '/WordSwap/styles.css',
-  '/WordSwap/app.js',
-  '/WordSwap/manifest.json'
+  '/ChineseReader/',
+  '/ChineseReader/index.html',
+  '/ChineseReader/styles.css',
+  '/ChineseReader/app.js',
+  '/ChineseReader/manifest.json'
 ];
 
 // Install service worker and cache files
