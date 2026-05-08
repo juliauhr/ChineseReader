@@ -190,17 +190,8 @@ pin.invisible {
     margin-bottom: 16px;
 }
 
-.tooltip-speak {
-    width: 100%;
-    padding: 12px;
-    background: #000000;
-    color: #ffffff;
-    border: 2px solid #000000;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-}
+
+
 
 /* Modal styles */
 .modal {
@@ -317,4 +308,94 @@ pin.invisible {
 .doc-buttons {
     display: flex;
     gap: 8px;
+}
+
+/* Clickable English words */
+.enword {
+    cursor: pointer;
+    /*border-bottom: 1px dotted #999;*/
+}
+
+.enword:hover {
+    border-bottom-color: #000;
+}
+
+/* Flash animation when a word is added to the list */
+@keyframes wordAdded {
+    0%   { background: #000; color: #fff; }
+    100% { background: transparent; color: inherit; }
+}
+
+.word-added {
+    animation: wordAdded 0.8s ease-out forwards;
+    border-radius: 2px;
+}
+
+/* Tooltip action row */
+.tooltip-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.tooltip-speak,
+.tooltip-save {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #000000;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.tooltip-speak {
+    background: #000000;
+    color: #ffffff;
+}
+
+.tooltip-save {
+    background: #ffffff;
+    color: #000000;
+}
+
+/* Word list modal entries */
+.word-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 2px solid #000000;
+}
+
+.word-item:last-child {
+    border-bottom: none;
+}
+
+.word-info {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.word-chinese {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.word-pinyin {
+    font-size: 15px;
+    color: #444;
+}
+
+.word-english {
+    font-size: 15px;
+    color: #666;
+    font-style: italic;
+}
+
+.word-english-only {
+    font-size: 18px;
+    font-weight: bold;
 }

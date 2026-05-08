@@ -14,6 +14,7 @@
             <input type="file" id="fileInput" accept=".txt,.html" />
             <label for="fileInput" class="btn">Load Document</label>
             <button id="savedDocsBtn" class="btn btn-secondary">Saved Docs</button>
+            <button id="wordListBtn" class="btn btn-secondary">Word List</button>
             <button id="fullscreenBtn" class="btn btn-secondary">Fullscreen</button>
         </div>
 
@@ -29,7 +30,10 @@
             <div class="tooltip-chinese"></div>
             <div class="tooltip-pinyin"></div>
             <div class="tooltip-english"></div>
-            <button class="tooltip-speak">🔊 Speak</button>
+            <div class="tooltip-actions">
+                <button class="tooltip-speak">🔊 Speak</button>
+                <button class="tooltip-save">＋ Word List</button>
+            </div>
         </div>
 
         <div id="savedDocsModal" class="modal hidden">
@@ -39,6 +43,16 @@
                     <button id="closeModal" class="btn-close">×</button>
                 </div>
                 <div id="savedDocsList" class="saved-docs-list"></div>
+            </div>
+        </div>
+
+        <div id="wordListModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Word List</h2>
+                    <button id="closeWordList" class="btn-close">×</button>
+                </div>
+                <div id="wordListItems" class="saved-docs-list"></div>
             </div>
         </div>
     </div>

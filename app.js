@@ -1,7 +1,7 @@
 // ─── IndexedDB helpers ────────────────────────────────────────────────────────
 // Replaces localStorage so documents of any size can be stored.
 const DB_NAME = 'chineseReaderDB';
-const DB_VERSION = 2;   // Bump this whenever you add/remove object stores
+const DB_VERSION = 3;   // Bump this whenever you add/remove object stores
 let db = null;
 
 function initDB() {
@@ -12,11 +12,15 @@ function initDB() {
             const d = e.target.result;
             // 'state'     – small key/value pairs (current doc name, page number)
             // 'documents' – full document content, keyed by name
+            // 'wordlist'  – saved words, keyed by word text (deduplicates naturally)
             if (!d.objectStoreNames.contains('state')) {
                 d.createObjectStore('state');
             }
             if (!d.objectStoreNames.contains('documents')) {
                 d.createObjectStore('documents', { keyPath: 'name' });
+            }
+            if (!d.objectStoreNames.contains('wordlist')) {
+                d.createObjectStore('wordlist', { keyPath: 'id' });
             }
         };
 
@@ -86,16 +90,20 @@ function idbGetAll(store) {
 }
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
-const fileInput       = document.getElementById('fileInput');
-const fullscreenBtn   = document.getElementById('fullscreenBtn');
-const savedDocsBtn    = document.getElementById('savedDocsBtn');
-const reader          = document.getElementById('reader');
-const tooltip         = document.getElementById('tooltip');
-const savedDocsModal  = document.getElementById('savedDocsModal');
-const savedDocsList   = document.getElementById('savedDocsList');
-const prevPage        = document.getElementById('prevPage');
-const nextPage        = document.getElementById('nextPage');
-const pageInfo        = document.getElementById('pageInfo');
+const fileInput        = document.getElementById('fileInput');
+const fullscreenBtn    = document.getElementById('fullscreenBtn');
+const savedDocsBtn     = document.getElementById('savedDocsBtn');
+const wordListBtn      = document.getElementById('wordListBtn');
+const reader           = document.getElementById('reader');
+const tooltip          = document.getElementById('tooltip');
+const savedDocsModal   = document.getElementById('savedDocsModal');
+const savedDocsList    = document.getElementById('savedDocsList');
+const wordListModal    = document.getElementById('wordListModal');
+const wordListItems    = document.getElementById('wordListItems');
+const closeWordListBtn = document.getElementById('closeWordList');
+const prevPage         = document.getElementById('prevPage');
+const nextPage         = document.getElementById('nextPage');
+const pageInfo         = document.getElementById('pageInfo');
 
 // ─── App state ────────────────────────────────────────────────────────────────
 let currentDocContent = '';
@@ -407,9 +415,64 @@ function hideSavedDocsModal() {
 
 // ─── Word tooltip ─────────────────────────────────────────────────────────────
 function attachWordListeners() {
+    wrapEnglishWords(reader);
+
     reader.querySelectorAll('.zhword').forEach(word => {
         word.addEventListener('click', (e) => { e.stopPropagation(); showTooltip(word, e); });
     });
+
+    reader.querySelectorAll('.enword').forEach(word => {
+        word.addEventListener('click', (e) => {
+            e.stopPropagation();
+            tooltip.classList.add('hidden');
+            addToWordList({ id: word.textContent.toLowerCase(), type: 'english', word: word.textContent });
+            flashWord(word);
+        });
+    });
+}
+
+// Walk text nodes in the reader and wrap English words in .enword spans.
+// Skips text inside .zhword, pin, and button elements.
+function wrapEnglishWords(container) {
+    const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        {
+            acceptNode(node) {
+                if (node.parentElement.closest('.zhword, pin, button')) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        }
+    );
+
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) textNodes.push(node);
+
+    for (const textNode of textNodes) {
+        if (!/[a-zA-Z]/.test(textNode.textContent)) continue;
+        const frag  = document.createDocumentFragment();
+        const parts = textNode.textContent.split(/(\b[a-zA-Z][a-zA-Z'-]*\b)/);
+        for (const part of parts) {
+            if (/^[a-zA-Z][a-zA-Z'-]*$/.test(part)) {
+                const span = document.createElement('span');
+                span.className   = 'enword';
+                span.textContent = part;
+                frag.appendChild(span);
+            } else {
+                frag.appendChild(document.createTextNode(part));
+            }
+        }
+        textNode.parentNode.replaceChild(frag, textNode);
+    }
+}
+
+// Brief highlight on the word that was just saved
+function flashWord(el) {
+    el.classList.add('word-added');
+    setTimeout(() => el.classList.remove('word-added'), 800);
 }
 
 function showTooltip(wordElement, event) {
@@ -453,7 +516,12 @@ function showTooltip(wordElement, event) {
 
     tooltip.style.left = `${left}px`;
     tooltip.style.top  = `${top}px`;
-    tooltip.querySelector('.tooltip-speak').onclick = () => speakChinese(chinese);
+    tooltip.querySelector('.tooltip-speak').onclick    = () => speakChinese(chinese);
+    tooltip.querySelector('.tooltip-save').onclick     = () => {
+        addToWordList({ id: chinese, type: 'chinese', chinese, pinyin: displayPinyin, english });
+        flashWord(wordElement);
+        tooltip.classList.add('hidden');
+    };
 }
 
 document.addEventListener('click', (e) => {
@@ -461,6 +529,58 @@ document.addEventListener('click', (e) => {
         tooltip.classList.add('hidden');
     }
 });
+
+// ─── Word list ────────────────────────────────────────────────────────────────
+async function addToWordList(entry) {
+    await idbPut('wordlist', { ...entry, addedAt: new Date().toISOString() });
+}
+
+async function removeFromWordList(id) {
+    await idbDelete('wordlist', id);
+    showWordList();
+}
+
+wordListBtn.addEventListener('click', showWordList);
+closeWordListBtn.addEventListener('click', () => wordListModal.classList.add('hidden'));
+wordListModal.addEventListener('click', (e) => { if (e.target === wordListModal) wordListModal.classList.add('hidden'); });
+
+async function showWordList() {
+    const entries = await idbGetAll('wordlist');
+    wordListItems.innerHTML = '';
+
+    if (entries.length === 0) {
+        wordListItems.innerHTML = '<p class="no-docs">No words saved yet. Click any word while reading to add it.</p>';
+    } else {
+        // Sort newest first
+        entries.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+        entries.forEach(entry => {
+            const row = document.createElement('div');
+            row.className = 'word-item';
+
+            const info = document.createElement('div');
+            info.className = 'word-info';
+
+            if (entry.type === 'chinese') {
+                info.innerHTML = `
+                    <span class="word-chinese">${entry.chinese}</span>
+                    <span class="word-pinyin">${entry.pinyin}</span>
+                    <span class="word-english">${entry.english}</span>`;
+            } else {
+                info.innerHTML = `<span class="word-english-only">${entry.word}</span>`;
+            }
+
+            const delBtn = document.createElement('button');
+            delBtn.className   = 'btn btn-secondary btn-small';
+            delBtn.textContent = 'Remove';
+            delBtn.onclick     = () => removeFromWordList(entry.id);
+
+            row.append(info, delBtn);
+            wordListItems.appendChild(row);
+        });
+    }
+
+    wordListModal.classList.remove('hidden');
+}
 
 // ─── Text-to-speech ───────────────────────────────────────────────────────────
 function speakChinese(text) {
