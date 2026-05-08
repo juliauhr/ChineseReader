@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000">
+    <title>Chinese Reader</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <input type="file" id="fileInput" accept=".txt,.html" />
+            <label for="fileInput" class="btn">Load Document</label>
+            <button id="savedDocsBtn" class="btn btn-secondary">Saved Docs</button>
+            <button id="fullscreenBtn" class="btn btn-secondary">Fullscreen</button>
+        </div>
+
+        <div id="reader" class="reader"></div>
+
+        <div class="page-controls">
+            <button id="prevPage" class="page-btn">← Previous</button>
+            <span id="pageInfo" class="page-info">Page 1 of 1</span>
+            <button id="nextPage" class="page-btn">Next →</button>
+        </div>
+
+        <div id="tooltip" class="tooltip hidden">
+            <div class="tooltip-chinese"></div>
+            <div class="tooltip-pinyin"></div>
+            <div class="tooltip-english"></div>
+            <button class="tooltip-speak">🔊 Speak</button>
+        </div>
+
+        <div id="savedDocsModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Saved Documents</h2>
+                    <button id="closeModal" class="btn-close">×</button>
+                </div>
+                <div id="savedDocsList" class="saved-docs-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed'));
+        }
+    </script>
+</body>
+</html>
