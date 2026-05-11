@@ -1,7 +1,7 @@
 // ─── IndexedDB helpers ────────────────────────────────────────────────────────
 // Replaces localStorage so documents of any size can be stored.
 const DB_NAME = 'chineseReaderDB';
-const DB_VERSION = 3;   // Bump this whenever you add/remove object stores
+const DB_VERSION = 4;   // Bump this whenever you add/remove object stores
 let db = null;
 
 function initDB() {
@@ -123,8 +123,7 @@ if ('speechSynthesis' in window) {
 window.addEventListener('DOMContentLoaded', async () => {
     await initDB();
 
-    const savedName    = await idbGet('state', 'currentDocName');
-    const savedPageNum = await idbGet('state', 'currentPage');
+    const savedName = await idbGet('state', 'currentDocName');
 
     if (savedName) {
         const doc = await idbGet('documents', savedName);
@@ -132,8 +131,10 @@ window.addEventListener('DOMContentLoaded', async () => {
             currentDocContent = doc.content;
             currentDocName    = savedName;
             await paginateContent(doc.content);
+            const savedPageNum = await idbGet('state', `page_${savedName}`);
             currentPage = savedPageNum ? parseInt(savedPageNum) : 0;
             displayPage(currentPage);
+			updateDocTitle();
         }
     }
 });
@@ -232,7 +233,7 @@ function displayPage(pageNum) {
     prevPage.disabled = currentPage === 0;
     nextPage.disabled = currentPage === pages.length - 1;
 
-    idbPut('state', currentPage.toString(), 'currentPage');
+    idbPut('state', currentPage.toString(), `page_${currentDocName}`);
     reader.scrollTop = 0;
 }
 
@@ -294,10 +295,10 @@ fileInput.addEventListener('change', async (e) => {
         // Auto-save to library immediately
         await saveDocument(docName, content);
         await idbPut('state', docName, 'currentDocName');
-        await idbPut('state', '0',     'currentPage');
 
         await paginateContent(content);
         displayPage(0);
+		updateDocTitle();
     };
 
     fileReader.readAsText(file);
@@ -337,13 +338,15 @@ async function loadDocument(name) {
 
     currentDocContent = doc.content;
     currentDocName    = name;
-    currentPage       = 0;
 
     await paginateContent(doc.content);
-    displayPage(0);
+
+    const savedPageNum = await idbGet('state', `page_${name}`);
+    currentPage = savedPageNum ? parseInt(savedPageNum) : 0;
+    displayPage(currentPage);
+	updateDocTitle();
 
     await idbPut('state', name, 'currentDocName');
-    await idbPut('state', '0',  'currentPage');
 
     hideSavedDocsModal();
 }
@@ -422,12 +425,7 @@ function attachWordListeners() {
     });
 
     reader.querySelectorAll('.enword').forEach(word => {
-        word.addEventListener('click', (e) => {
-            e.stopPropagation();
-            tooltip.classList.add('hidden');
-            addToWordList({ id: word.textContent.toLowerCase(), type: 'english', word: word.textContent });
-            flashWord(word);
-        });
+        word.addEventListener('click', (e) => { e.stopPropagation(); showEnglishTooltip(word, e); });
     });
 }
 
@@ -497,6 +495,7 @@ function showTooltip(wordElement, event) {
     tooltip.querySelector('.tooltip-chinese').textContent = chinese;
     tooltip.querySelector('.tooltip-pinyin').textContent  = displayPinyin;
     tooltip.querySelector('.tooltip-english').textContent = english;
+    tooltip.querySelector('.tooltip-speak').style.display = '';
     tooltip.classList.remove('hidden');
 
     const rect          = wordElement.getBoundingClientRect();
@@ -524,8 +523,49 @@ function showTooltip(wordElement, event) {
     };
 }
 
+function showEnglishTooltip(wordElement, event) {
+    const word = wordElement.textContent;
+
+    tooltip.querySelector('.tooltip-chinese').textContent = word;
+    tooltip.querySelector('.tooltip-pinyin').textContent  = '';
+    tooltip.querySelector('.tooltip-english').textContent = '';
+    tooltip.querySelector('.tooltip-speak').style.display = 'none';
+    tooltip.classList.remove('hidden');
+
+    const rect        = wordElement.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const vw          = window.innerWidth;
+    const vh          = window.innerHeight;
+
+    let left = rect.left;
+    let top  = rect.bottom + 10;
+
+    if (left + tooltipRect.width > vw)   left = vw - tooltipRect.width - 10;
+    if (left < 10)                        left = 10;
+    if (top  + tooltipRect.height > vh) {
+        top = rect.top - tooltipRect.height - 10;
+        if (top < 10) top = 10;
+    }
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top  = `${top}px`;
+
+    tooltip.querySelector('.tooltip-speak').onclick = () => {
+        if ('speechSynthesis' in window) {
+            const utt  = new SpeechSynthesisUtterance(word);
+            utt.lang   = 'en-US';
+            speechSynthesis.speak(utt);
+        }
+    };
+    tooltip.querySelector('.tooltip-save').onclick = () => {
+        addToWordList({ id: word.toLowerCase(), type: 'english', word });
+        flashWord(wordElement);
+        tooltip.classList.add('hidden');
+    };
+}
+
 document.addEventListener('click', (e) => {
-    if (!tooltip.contains(e.target) && !e.target.classList.contains('zhword')) {
+    if (!tooltip.contains(e.target) && !e.target.classList.contains('zhword') && !e.target.classList.contains('enword')) {
         tooltip.classList.add('hidden');
     }
 });
@@ -591,4 +631,11 @@ function speakChinese(text) {
     } else {
         alert('Text-to-speech not supported on this device');
     }
+}
+
+
+const docTitle = document.getElementById('docTitle');
+
+function updateDocTitle() {
+    docTitle.textContent = currentDocName || '';
 }

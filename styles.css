@@ -158,7 +158,7 @@ pin.invisible {
     background: white;
     border: 3px solid #000000;
     border-radius: 0;
-    padding: 20px;
+    padding: 10px;
     box-shadow: none;
     z-index: 1000;
     max-width: 300px;
@@ -340,12 +340,13 @@ pin.invisible {
 .tooltip-speak,
 .tooltip-save {
     flex: 1;
-    padding: 12px;
+    padding: 8px;
     border: 2px solid #000000;
     border-radius: 4px;
     cursor: pointer;
     font-size: 15px;
     font-weight: bold;
+	white-space: nowrap;
 }
 
 .tooltip-speak {
@@ -398,4 +399,12 @@ pin.invisible {
 .word-english-only {
     font-size: 18px;
     font-weight: bold;
+}
+
+.doc-title-bar {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    padding: 6px 0 16px;
+    color: #666;
 }
